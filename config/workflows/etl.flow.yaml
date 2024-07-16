@@ -5,7 +5,7 @@ main:
         assign:
           - INPUTS: $${args}
           - SLACK:
-              URL: https://hooks.slack.com/services/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
+              URL: https://hooks.slack.com/services/----/---/----
               TITLE: "Error notification for: ${solution.name}"
               TEMPLATE:
                 TYPE: errorNotification

@@ -46,11 +46,7 @@
           "desc": "Collection of exchange rates history for currencies from Exchange Rates",
           "deletionProtection": false,
           "access": [
-            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "adm--ua--run@analytics-data-mart.iam.gserviceaccount.com" },
-            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "dev--data-handler@nft-passive-income-dev.iam.gserviceaccount.com" },
-            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "prod--data-handler@nft-passive-income.iam.gserviceaccount.com" },
-            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "stg--data-handler@nft-passive-income.iam.gserviceaccount.com" },
-            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "test--data-handler@nft-passive-income-dev.iam.gserviceaccount.com" }
+            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "SA@------.iam.gserviceaccount.com" }
           ]
         }
       }
@@ -74,7 +70,7 @@
     "run": {
       "services": {
         "runner": {
-          "image": "us-central1-docker.pkg.dev/analytics-data-mart/etl/exchange-rates/prod",
+          "image": "us-central1-docker.pkg.dev/---/etl/exchange-rates/prod",
           "version": "latest"
         }
       }
