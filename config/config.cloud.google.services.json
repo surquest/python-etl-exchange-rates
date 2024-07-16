@@ -1,0 +1,116 @@
+{
+  "services": {
+    "IAM": {
+      "serviceAccounts": {
+        "runner": {
+          "name": "Runtime SA for Exchange Rates ETL",
+          "desc": "Service account for the Exchange Rates ETL process",
+          "code": "runner",
+          "roles": [
+            "roles/logging.logWriter",
+            "roles/cloudtrace.agent",
+            "roles/bigquery.jobUser",
+            "roles/workflows.invoker",
+            "roles/iam.serviceAccountUser"
+          ]
+        }
+      }
+    },
+    "storage": {
+      "buckets": {
+        "ingress": {
+          "desc": "ETL Ingress Bucket for data in raw as well as transformed format",
+          "code": "ingress",
+          "lifecycle": {
+            "age": 7,
+            "actionType": "Delete"
+          }
+        }
+      }
+    },
+    "secretManager": {
+      "secrets": {
+        "FX": {
+          "code": "runner"
+        },
+        "APIKEY": {
+          "code": "apikey"
+        }
+      }
+    },
+    "bigquery": {
+      "datasets": {
+        "raw": {
+          "name": "Exchange Rates FX Raw",
+          "code": "exchange_rates",
+          "desc": "Collection of exchange rates history for currencies from Exchange Rates",
+          "deletionProtection": false,
+          "access": [
+            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "adm--ua--run@analytics-data-mart.iam.gserviceaccount.com" },
+            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "dev--data-handler@nft-passive-income-dev.iam.gserviceaccount.com" },
+            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "prod--data-handler@nft-passive-income.iam.gserviceaccount.com" },
+            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "stg--data-handler@nft-passive-income.iam.gserviceaccount.com" },
+            { "role": "roles/bigquery.dataViewer", "type": "serviceAccount", "email": "test--data-handler@nft-passive-income-dev.iam.gserviceaccount.com" }
+          ]
+        }
+      }
+    },
+    "workflows": {
+      "etl": {
+        "desc": "Main flow for getting data from Exchange Rates for all currency pairs",
+        "serviceAccount": "runner",
+        "source": "etl.flow.yaml",
+        "subWorkflow": "wrapper"
+      }
+    },
+    "scheduler": {
+      "etl": {
+        "desc": "Triggering the ETL process for Exchange Rates",
+        "serviceAccount": "runner",
+        "schedule": "0 7 * * *",
+        "timeZone": "Europe/Prague"
+      }
+    },
+    "run": {
+      "services": {
+        "runner": {
+          "image": "us-central1-docker.pkg.dev/analytics-data-mart/etl/exchange-rates/prod",
+          "version": "latest"
+        }
+      }
+    },
+    "pubsub": {
+      "topics": {
+        "alerting": {
+          "desc": "Alerting channel for monitoring notifications over ETL Workflow process of Exchange Rates",
+          "messageRetention": "86600s"
+        }
+      }
+    },
+    "monitoring": {
+      "notificationChannels": {
+        "pubsub": {
+          "name": "PubSub notification channel for Exchange Rates ETL",
+          "desc": "PubSub notification channel for monitoring notifications over ETL Workflow process of Exchange Rates"
+        }
+      },
+      "alertPolicies": {
+        "etl": {
+          "name": "Exchange Rates alerts for ETL Workflow process failures",
+          "condition": {
+            "name": "No Failure in ETL Workflow process of Exchange Rates",
+            "duration": "60s",
+            "comparison": "COMPARISON_GT",
+            "aggregations": {
+              "alignmentPeriod": "60s",
+              "perSeriesAligner": "ALIGN_RATE"
+            },
+            "trigger": {
+              "count": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

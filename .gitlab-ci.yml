@@ -1,0 +1,38 @@
+stages:
+  - docs        # build documentation
+  - infra:init  # init Terraform
+  - infra:apply # deploy infrastructure via Terraform
+  - build       # builds 2 docker images APP + TEST
+  - test        # runs units and integration tests as well as PyLint for code quality check
+  - publish     # moves docker images from GitLab Repository to Google Cloud Container Registry
+  - deploy      # deploy serverless services
+
+include:
+  - project: 'analytics/templates/ci-jobs'
+    ref: 'master'
+    file:
+      - '/templates/python.cloud-run.yaml'
+      - '/templates/jobs/terraform/terraform.gitlab-ci.yaml'
+      - '/templates/jobs/docs/mkdocs.gitlab-ci.yaml'
+
+build:app:
+  extends: .build:app
+
+build:test:
+  extends: .build:test
+
+test:app:
+  extends: .test
+
+publish:prod:
+  extends: .publish:prod
+
+deploy:prod:
+  extends: .deploy:prod
+
+# Run terraform scripts
+infra:init:
+  extends: .infra:init
+
+infra:apply:
+  extends: .infra:apply

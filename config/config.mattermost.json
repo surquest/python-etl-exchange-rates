@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "dev": "https://mattermost...",
+    "test": "https://mattermost...",
+    "prod": "https://mattermost..."
+  }
+}

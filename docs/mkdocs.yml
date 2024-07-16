@@ -1,0 +1,27 @@
+site_name: ADM ExchangeRate API Data Pipeline
+repo_url: https://gitlab.wearerealitygames.com/analytics/analytical-data-mart/etl/exchange-rates
+docs_dir: src
+nav:
+  - Home: index.md
+  - Infrastructure: infra.md
+  - ETL: etl.md
+theme:
+  name: material
+  features:
+    - content.code.annotate
+plugins:
+    - drawio_file
+    - search
+    - macros
+    - glightbox
+markdown_extensions:
+  - abbr
+  - attr_list
+  - pymdownx.snippets:
+      auto_append:
+        - "extras/glossary.md"
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+

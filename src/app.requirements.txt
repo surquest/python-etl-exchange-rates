@@ -1,0 +1,19 @@
+# fastapi
+uvicorn==0.20.0
+fastapi==0.91.0
+requests==2.28.2
+
+# google services
+google-cloud-bigquery==3.5.0
+google-cloud-storage==2.7.0
+
+# Tor client
+torpy==1.1.6
+
+# utilities
+surquest-fastapi-utils>=0.1.1rc1
+surquest-GCP-bq-grid>=0.0.1rc7
+surquest-GCP-secret-assessor>=0.0.1
+surquest-utils-loader>=0.0.1
+surquest-utils-config-formatter>=0.0.1rc4
+

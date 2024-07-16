@@ -1,0 +1,43 @@
+{
+  "IAM": {
+    "serviceAccounts": {
+      "runner": "etl--${solution.slug}-${services.IAM.serviceAccounts.runner.code}--${GCP.env}"
+    }
+  },
+  "secrets": {
+    "keyfiles": {
+      "runner": "ETL_${upper(solution.slug)}_${upper(services.IAM.serviceAccounts.runner.code)}_${upper(GCP.env)}_KEYFILE"
+    },
+    "misc": {
+      "apiKey": "ETL_${upper(solution.slug)}_APILAYER_${upper(GCP.env)}_APIKEY"
+    }
+  },
+  "storage": {
+    "buckets": {
+      "ingress": "etl--${solution.code}--${services.storage.buckets.ingress.code}--${lower(GCP.env)}"
+    }
+  },
+  "bigquery": {
+    "datasets": {
+      "raw": "adm_${services.bigquery.datasets.raw.code}_raw"
+    }
+  },
+  "run": {
+    "services": {
+      "runner": "etl--${solution.code}--${GCP.env}"
+    }
+  },
+  "workflows": {
+    "subject": "etl--${solution.code}--subject--${GCP.env}",
+    "wrapper": "etl--${solution.code}--wrapper--${GCP.env}",
+    "etl": "etl--${solution.code}--etl--${GCP.env}"
+  },
+  "scheduler": {
+    "etl": "etl--${solution.code}--${GCP.env}"
+  },
+  "pubsub": {
+    "topics": {
+      "alerting": "etl--${solution.code}--alerting--${GCP.env}"
+    }
+  }
+}

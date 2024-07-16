@@ -1,0 +1,239 @@
+main:
+  params: [args]
+  steps:
+    - init:
+        assign:
+          - INPUTS: $${args}
+          - SLACK:
+              URL: https://hooks.slack.com/services/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
+              TITLE: "Error notification for: ${solution.name}"
+              TEMPLATE:
+                TYPE: errorNotification
+          - GCP:
+              PROJECT:
+                ID: $${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+                LOCATION: ${GCP.region}
+          - CONFIG:
+              CLOUD_RUN:
+                URL: https://etl--exchange-rates--prod-wurifsgtsq-uc.a.run.app/api/etl--exchange-rates--prod/latest
+        next: get_execution_variables
+    - get_execution_variables:
+        call: googleapis.workflowexecutions.v1beta.projects.locations.workflows.executions.run
+        args:
+          workflow_id: adm--slack-notes--vars-formatter
+          location: $${sys.get_env("GOOGLE_CLOUD_LOCATION")}       # or hardcode value: us-central1
+          project_id: $${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}   # or hardcode value: analytics-data-mart
+          argument:
+            GOOGLE_CLOUD_PROJECT_ID: $${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+            GOOGLE_CLOUD_LOCATION: $${sys.get_env("GOOGLE_CLOUD_LOCATION")}
+            GOOGLE_CLOUD_WORKFLOW_ID: $${sys.get_env("GOOGLE_CLOUD_WORKFLOW_ID")}
+            GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID: $${sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+        result: VARS
+        next: log_execution_vars
+    - log_execution_vars:
+        call: sys.log
+        args:
+          severity: INFO
+          json: $${VARS}
+        next: run_etl
+    - run_etl:
+        try:
+          steps:
+            - run_core_loop:
+                call: CORE_LOOP
+                args:
+                  INPUTS: $${INPUTS}
+                  VARS: $${VARS}
+                  CONFIG: $${CONFIG}
+                  GCP: $${GCP}
+            - output:
+                return: $${VARS}
+        except:
+          as: error
+          steps:
+            # - do_slack_notification: # run the subworkflow
+            #     call: googleapis.workflowexecutions.v1beta.projects.locations.workflows.executions.run
+            #     args:
+            #       workflow_id: adm--slack-notes--notification
+            #       location: $${sys.get_env("GOOGLE_CLOUD_LOCATION")}       # or hardcode value: us-central1
+            #       project_id: $${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}   # or hardcode value: analytics-data-mart
+            #       argument:
+            #         url: $${SLACK.URL}
+            #         template:
+            #           type: $${SLACK.TEMPLATE.TYPE}
+            #           vars:
+            #             executionURL: $${VARS.EXEC.WORKFLOW.URL}
+            #             logURL: $${VARS.EXEC.LOG.URL}
+            #             traceURL: $${VARS.EXEC.TRACE.URL}
+            #             error: $${error}
+            #             header: $${SLACK.TITLE}
+            #             inputs: $${args}
+            - raise_error:
+                raise: $${error}
+
+CORE_LOOP:
+  params: [INPUTS, VARS, CONFIG, GCP]
+  steps:
+    - getSubjects:
+        call: http.get
+        args:
+          url: '$${CONFIG.CLOUD_RUN.URL+"/ETL/subjects"}'
+          headers: $${VARS.TRACE}
+          auth:
+            type: OIDC
+        result: subjects
+        next: log_subjects
+    - log_subjects:
+        call: sys.log
+        args:
+          severity: INFO
+          json: $${subjects.body}
+        next: run_etl_for_each_subject
+    - run_etl_for_each_subject:
+        for:
+          value: subject
+          in: $${subjects.body.data}
+          steps:
+            - getToday:
+                assign:
+                  - today: '$${text.substring(time.format(sys.now()),0,10)}' # Unix timestamp in seconds
+                next: logSubject
+
+            - logSubject:
+                call: sys.log
+                args:
+                  severity: INFO
+                  text: $${"Running ETL for subject - " + subject}
+                next: getConfig
+
+            - getConfig:
+                call: http.get
+                args:
+                  url: '$${CONFIG.CLOUD_RUN.URL+"/ETL/config"}'
+                  headers: $${VARS.TRACE}
+                  query:
+                    currency: $${subject}
+                  auth:
+                    type: OIDC
+                result: config
+                next: checkTable
+
+            - checkTable:
+                call: http.get
+                args:
+                  url: '$${CONFIG.CLOUD_RUN.URL+"/BQ/datasets/"+config.body.data.BQ.dataset+"/tables/"+config.body.data.BQ.tables.destination.name+"/exist"}'
+                  headers: $${VARS.TRACE}
+                  auth:
+                    type: OIDC
+                result: tableCheck
+                next: ifTableExist
+
+            - ifTableExist:
+                switch: 
+                  - condition: '$${tableCheck.body.data.exist == true}'
+                    next: getStart
+                next: createTable
+
+            - createTable:
+                call: http.post
+                args:
+                  url: '$${CONFIG.CLOUD_RUN.URL+"/BQ/datasets/"+config.body.data.BQ.dataset+"/tables/"+config.body.data.BQ.tables.destination.name+"/create"}'
+                  headers: $${VARS.TRACE}
+                  auth:
+                    type: OIDC
+                  body: '$${config.body.data.BQ.tables.destination.config}'
+                result: tableCreate
+                next: getBatches
+
+            - getStart:
+                call: http.get
+                args:
+                  url: '$${CONFIG.CLOUD_RUN.URL+"/BQ/datasets/"+config.body.data.BQ.dataset+"/tables/"+config.body.data.BQ.tables.destination.name+"/records/last"}'
+                  auth:
+                    type: OIDC
+                  headers: $${VARS.TRACE}
+                  query:
+                    currency: $${subject}
+                result: historyStart
+                next: checkMissingHistory
+
+            - checkMissingHistory:
+                switch:
+                  - condition: '$${historyStart.body.data.start.date == today}'
+                    next: log_no_actions
+                next: getBatches
+
+            - getBatches:
+                call: http.get
+                args:
+                  url: '$${CONFIG.CLOUD_RUN.URL+"/ETL/batches"}'
+                  auth:
+                    type: OIDC
+                  headers: $${VARS.TRACE}
+                  query:
+                    start: '$${historyStart.body.data.start.date+""}' # convert to string via +"" to avoid scientific notation
+                result: batches
+                next: fetchBatches
+
+            - fetchBatches:
+                for:
+                  value: batch
+                  in: $${batches.body.data}
+                  steps:
+                    - logBatch:
+                        call: sys.log
+                        args:
+                          severity: INFO
+                          text: $${"Fetching batch - " + batch.start + " to " + batch.end}
+                        next: fetchBatch
+                    - fetchBatch:
+                        call: http.post
+                        args:
+                          url: '$${CONFIG.CLOUD_RUN.URL+"/ETL/data/fetch"}'
+                          auth:
+                            type: OIDC
+                          headers: $${VARS.TRACE}
+                          query:
+                            end: '$${batch.end+""}' # convert to string via +"" to avoid scientific notation
+                            start: '$${batch.start+""}' # convert to string via +"" to avoid scientific notation
+                            currency: $${subject}
+                          body: '$${config.body.data.GCS}'
+
+                next: mergeBatches
+
+            - mergeBatches:
+                call: http.put
+                args:
+                  url: '$${CONFIG.CLOUD_RUN.URL+"/GCS/buckets/"+config.body.data.GCS.bucket+"/blobs/*/merge"}'
+                  auth:
+                    type: OIDC
+                  headers: $${VARS.TRACE}
+                  query:
+                    srcPrefix: '$${config.body.data.GCS.prefixes.bq}'
+                    tmpPrefix : '$${config.body.data.GCS.prefixes.tmp}'
+                    finalBlob:  '$${config.body.data.GCS.blobs.merged}'
+                result: blobMerged
+                next: importData
+            
+            - importData:
+                call: http.put
+                args:
+                  url: '$${CONFIG.CLOUD_RUN.URL+"/BQ/datasets/"+config.body.data.BQ.dataset+"/tables/"+config.body.data.BQ.tables.destination.name+"/import"}'
+                  auth:
+                    type: OIDC
+                  headers: $${VARS.TRACE}
+                  query:
+                    blobURL: '$${blobMerged.body.data.blobURL}'
+                next: log_subject_complete
+
+            - log_no_actions:
+                call: sys.log
+                args:
+                  severity: INFO
+                  text: $${"No actions taken for subject - " + subject}
+
+            - log_subject_complete:
+                call: sys.log
+                args:
+                  severity: INFO
+                  text: $${"ETL completed for subject - " + subject}

@@ -1,0 +1,26 @@
+{
+  "currencies": [
+    {
+      "code": "EUR",
+      "endpoints": {
+        "exchangeInfo": "https://exchangerate.host/#/#docs",
+        "x-timeseries": "https://api.exchangerate.host/timeseries?base=EUR&start_date={startDate}&end_date={endDate}",
+        "timeseries": "https://api.apilayer.com/exchangerates_data/timeseries?base=EUR&start_date={startDate}&end_date={endDate}"
+      },
+      "history": {
+        "start": "2022-01-01"
+      }
+    },
+    {
+      "code": "USD",
+      "endpoints": {
+        "exchangeInfo": "https://exchangerate.host/#/#docs",
+        "x-timeseries": "https://api.exchangerate.host/timeseries?base=USD&start_date={startDate}&end_date={endDate}",
+        "timeseries": "https://api.apilayer.com/exchangerates_data/timeseries?base=USD&start_date={startDate}&end_date={endDate}"
+      },
+      "history": {
+        "start": "2022-01-01"
+      }
+    }
+  ]
+}

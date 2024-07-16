@@ -1,0 +1,33 @@
+name: "fx_history"
+desc: "Journal table for historical exchange rates of currency pairs sourced from https://exchangeratesapi.io/"
+labels:
+  project: "analytics-data-mart"
+  solution: "exchange-rates"
+clustering_fields:
+  - currency_base
+  - currency_quote
+time_partitioning:
+  field: date
+  type: DAY
+schema:
+  - name: date
+    desc: "Date of the exchange rate (format ISO 8601 YYYY-MM-DD)"
+    type: DATE
+    mode: REQUIRED
+  - name: currency_base
+    desc: "Base currency ISO description"
+    type: STRING
+    mode: REQUIRED
+  - name: currency_quote
+    desc: "Quote currency ISO description"
+    type: STRING
+    mode: REQUIRED
+  - name: exchange_rate
+    desc: "Exchange rate for described currency for specific date"
+    type: FLOAT
+    mode: REQUIRED
+  - name: created_at
+    desc: The date the record was created
+    type: TIMESTAMP
+    mode: REQUIRED
+    defaultValueExpression: CURRENT_TIMESTAMP()
